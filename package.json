@@ -4,7 +4,7 @@
   "description": "A node.js/hapi template application for use with the Heroku kensa gem.",
   "main": "index.js",
   "scripts": {
-    "test": "test"
+    "start": "node web"
   },
   "repository": {
     "type": "git",
@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/KevinGrandon/kensa-create-node-hapi/issues"
   },
-  "homepage": "https://github.com/KevinGrandon/kensa-create-node-hapi#readme"
+  "homepage": "https://github.com/KevinGrandon/kensa-create-node-hapi#readme",
+  "dependencies": {
+    "hapi": "^11.1.2"
+  }
 }
