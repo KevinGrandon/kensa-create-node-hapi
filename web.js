@@ -57,18 +57,18 @@ server.auth.strategy('basic', 'basic')
 
 const ssoScheme = function (server, options) {
   return {
-     // add headers to the response.
-    response: function (request, reply) {
-      request.response.header('heroku-nav-data', request.query['nav-data'])
-      reply.continue()
+    // Skip authenticate because it does not yet have the necessary payload.
+    // We'll authenticate the user in the `payload` method.
+    authenticate: function (request, reply) {
+      console.log('in authenticate()')
+      return reply.continue({credentials: {}})
     },
 
-    authenticate: function (request, reply) {
+    payload: function (request, reply) {
       console.log('doing sso authenticate')
-      var id = request.query.id || request.params.id
+      var id = request.payload.id
       console.log(id)
-      console.log('params: ', request.params)
-      console.log('query: ', request.query)
+      console.log('payload: ', request.payload)
       var pre_token = id + ':' + process.env.SSO_SALT + ':' + request.query.timestamp
       var shasum = crypto.createHash('sha1')
       shasum.update(pre_token)
@@ -80,13 +80,27 @@ const ssoScheme = function (server, options) {
       if (parseInt(request.query.timestamp, 10) < time) {
         return reply(Hapi.boom.unauthorized('Timestamp Expired')).code(403)
       }
-      return reply.continue({credentials: {resource: get_resource(id), email: request.query.email}})
+      request.auth.credentials = {
+        credentials: {resource: get_resource(id), email: request.payload.email},
+        herokuNavData: request.payload['nav-data']
+      }
+      return reply.continue()
     }
   }
 }
 
 server.auth.scheme('sso', ssoScheme)
 server.auth.strategy('sso', 'sso')
+
+// Allow setting of the cookie for heroku.
+server.state('heroku-nav-data', {
+  ttl: null,
+  isSecure: false,
+  isHttpOnly: true,
+  encoding: 'none',
+  clearInvalid: false,
+  strictHeader: false
+})
 
 // Provision
 server.route({
@@ -148,7 +162,9 @@ server.route({
   config: {
     auth: 'sso',
     handler: function (request, reply) {
-      reply.redirect('/')
+      reply()
+        .state('heroku-nav-data', request.payload['nav-data'])
+        .redirect('/')
     }
   }
 })
@@ -160,7 +176,9 @@ server.route({
   config: {
     auth: 'sso',
     handler: function (request, reply) {
-      reply.redirect('/')
+      reply()
+        .state('heroku-nav-data', request.payload['nav-data'])
+        .redirect('/')
     }
   }
 })
